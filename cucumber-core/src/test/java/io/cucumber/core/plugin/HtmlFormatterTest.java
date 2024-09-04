@@ -1,5 +1,7 @@
 package io.cucumber.core.plugin;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.cucumber.core.eventbus.EventBus;
 import io.cucumber.core.runtime.TimeServiceEventBus;
 import io.cucumber.messages.types.Envelope;
@@ -22,6 +24,7 @@ import java.util.UUID;
 import static io.cucumber.core.plugin.Bytes.bytes;
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.equalTo;
 
 class HtmlFormatterTest {
 
@@ -38,11 +41,21 @@ class HtmlFormatterTest {
         TestRunFinished testRunFinished = new TestRunFinished(null, true, new Timestamp(15L, 0L), null);
         bus.send(Envelope.of(testRunFinished));
 
-        assertThat(bytes, bytes(containsString("" +
-                "window.CUCUMBER_MESSAGES = [" +
+        String actualOutput = bytes.toString();
+        String expectedJsonStart = actualOutput.substring(actualOutput.indexOf("window.CUCUMBER_MESSAGES = ["));
+        String actualJsonContent = expectedJsonStart.substring(0, expectedJsonStart.indexOf("];") + 2).replace("window.CUCUMBER_MESSAGES = ",
+        "");
+
+        String expectedJsonContent = "[" +
                 "{\"testRunStarted\":{\"timestamp\":{\"seconds\":10,\"nanos\":0}}}," +
                 "{\"testRunFinished\":{\"success\":true,\"timestamp\":{\"seconds\":15,\"nanos\":0}}}" +
-                "];\n")));
+                "]";
+
+        ObjectMapper mapper = new ObjectMapper();
+        JsonNode actualJsonNode = mapper.readTree(actualJsonContent);
+        JsonNode expectedJsonNode = mapper.readTree(expectedJsonContent);
+
+        assertThat(actualJsonNode, equalTo(expectedJsonNode));
     }
 
     @Test
